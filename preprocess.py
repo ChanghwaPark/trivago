@@ -90,8 +90,10 @@ def save_session_dicts():
                 for j in range(len(current_filters)):
                     if current_filters[j] not in filter_dict:
                         filter_dict.update({current_filters[j]: len(filter_dict)})
-            if current_session not in session_dict:
-                session_dict.update({current_session: len(session_dict)})
+            # if current_session not in session_dict:
+            if i == 0 or (i > 0 and trainfile[i - 1, 1] != trainfile[i, 1]):
+                # session_dict.update({current_session: len(session_dict)})
+                session_dict.update({len(session_dict): current_session})
 
     print(f"User id: {len(user_id_dict)}")
     print(f"Action type: {len(action_type_dict)}")
@@ -202,6 +204,7 @@ def make_session_vector():
     print(f"session_size: {session_len}")
 
     impressions_dict = {}
+    positive_sample_dict = {}
     train_index = 0
     platform_start = 0
     city_start = platform_start + platform_space
@@ -215,9 +218,9 @@ def make_session_vector():
     # pcd_space = platform_space + city_space + device_space
     # max_action_index = 0
 
-    for k in range(1000):
+    for k in range(100):
         session_file_name = "session_vector_{}".format(k)
-        if k % 100 == 0:
+        if k % 10 == 0:
             print(session_file_name)
         session_vector = np.zeros((int(session_len / 1000), total_space))
         # previous_session_id = ''
@@ -284,9 +287,12 @@ def make_session_vector():
                 if trainfile[train_index, 5].isdigit() and int(trainfile[train_index, 5]) in item_vector:
                     if (reference_value_start + (action_index + 1) * reference_value_len) > filter_start:
                         raise ValueError("Reference value indexing error")
-                    session_vector[session_index, (reference_value_start + action_index * reference_value_len):(
-                            reference_value_start + (action_index + 1) * reference_value_len)] = item_vector[
-                        int(trainfile[train_index, 5])]
+                    if trainfile[train_index, 4] != 'clickout item':
+                        session_vector[session_index, (reference_value_start + action_index * reference_value_len):(
+                                reference_value_start + (action_index + 1) * reference_value_len)] = item_vector[
+                            int(trainfile[train_index, 5])]
+                    if trainfile[train_index, 4] == 'clickout item':
+                        positive_sample_dict.update({trainfile[train_index, 1]: trainfile[train_index, 5]})
 
                 current_filter = trainfile[train_index, 9]
                 if type(current_filter) == np.str:
@@ -323,6 +329,7 @@ def make_session_vector():
 
     # impressions_dict only contains item_ids
     save_file(impressions_dict, 'impressions_dict')
+    save_file(positive_sample_dict, 'positive_sample_dict')
 
 
 # Make the item vector
