@@ -19,11 +19,12 @@ def get_loss(lf, positive_y_hat, negative_y_hat):
 
 
 def get_bpr_loss(py, ny):
-    return -tf.reduce_mean(tf.log_sigmoid(py - ny))
+    # return -tf.reduce_mean(tf.log_sigmoid(tf.ones_like(ny) * py - ny))
+    return -tf.reduce_mean(tf.log(tf.sigmoid(tf.ones_like(ny) * py - ny)))
 
 
 def get_top_loss(py, ny):
-    return tf.reduce_mean(tf.sigmoid(ny - py) + tf.sigmoid(tf.square(ny)))
+    return tf.reduce_mean(tf.sigmoid(ny - tf.ones_like(ny) * py) + tf.sigmoid(tf.square(ny)))
 
 
 def model(FLAGS):
@@ -43,18 +44,23 @@ def model(FLAGS):
 
     positive_y_hat = get_y_hat(T.sv, T.pv, sess_q, item_p, sess_weight, item_weight)
     # negative_y_hat = tf.zeros((25))
-    negative_y_hat = tf.Variable(tf.zeros((25)))
+    negative_y_hat = tf.Variable(tf.ones((25)))
 
     for i in range(25):
         # negative_y_hat[i] = get_y_hat(T.sv, tf.transpose(tf.expand_dims(T.iv[i], 1)), sess_q, item_p, sess_weight, item_weight)
         negative_y_hat[i].assign(get_y_hat(T.sv, tf.transpose(tf.expand_dims(T.iv[i], 1)), sess_q, item_p, sess_weight,
-                                      item_weight))
-    T.loss = loss = get_loss(FLAGS.lf, positive_y_hat, negative_y_hat)
+                                           item_weight))
+    loss = get_loss(FLAGS.lf, positive_y_hat, negative_y_hat)
 
-    T.optimizer = tf.train.AdagradOptimizer(FLAGS.lr).minimize(loss)
+    optimizer = tf.train.AdagradOptimizer(FLAGS.lr).minimize(loss)
+
+    summary = [tf.summary.scalar('loss', loss)]
+    summary = tf.summary.merge(summary)
 
     c = tf.constant
     T.ops_print = [c('loss'), loss]
+
+    T.ops = [summary, optimizer]
 
     print(colored("Model is initialized.", "blue"))
 

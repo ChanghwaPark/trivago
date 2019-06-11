@@ -1,10 +1,11 @@
 import random
-
+import os
 import numpy as np
 import tensorbayes as tb
+import tensorflow as tf
 from termcolor import colored
 
-from utils import load_file
+from utils import load_file, delete_existing, save_model
 
 
 def update_dict(M, feed_dict, session_file_index, session_vector_file, session_dict, item_vector, impressions_dict,
@@ -55,15 +56,27 @@ def update_dict(M, feed_dict, session_file_index, session_vector_file, session_d
     feed_dict.update({M.sv: session_vector, M.iv: impressions_vector, M.pv: positive_sample_vector})
 
 
-def train(M, FLAGS):
+def train(M, FLAGS, saver=None, model_name=None):
     print(colored("Training is started.", "blue"))
 
     iterep = 1000
+    itersave = 20000
     n_epoch = FLAGS.epoch
     epoch = 0
     feed_dict = {}
 
-    session_file_index = random.randint(0, 99)
+    # Create log directory
+    log_dir = os.path.join(FLAGS.logdir, model_name)
+    delete_existing(log_dir)
+    train_writer = tf.summary.FileWriter(log_dir)
+
+    # Create checkpoint directory
+    if saver:
+        model_dir = os.path.join(FLAGS.ckptdir, model_name)
+        delete_existing(model_dir)
+        os.makedirs(model_dir)
+
+    session_file_index = random.randint(0, 49)
     session_vector_file_name = 'session_vector_' + str(session_file_index)
     session_vector_file = load_file(session_vector_file_name)
 
@@ -78,7 +91,9 @@ def train(M, FLAGS):
     for i in range(n_epoch * iterep):
         update_dict(M, feed_dict, session_file_index, session_vector_file, session_dict, item_vector, impressions_dict,
                     positive_sample_dict)
-        _ = M.sess.run(M.optimizer, feed_dict)
+        summary, _ = M.sess.run(M.ops, feed_dict)
+        train_writer.add_summary(summary, i + 1)
+        train_writer.flush()
 
         end_epoch, epoch = tb.utils.progbar(i, iterep, message='{}/{}'.format(epoch, i), display=True)
 
@@ -95,8 +110,15 @@ def train(M, FLAGS):
             print_list += ['epoch', epoch]
             print(print_list)
 
-            session_file_index = random.randint(0, 99)
+            session_file_index = random.randint(0, 49)
             session_vector_file_name = 'session_vector_' + str(session_file_index)
             session_vector_file = load_file(session_vector_file_name)
+
+        if saver and (i + 1) % itersave == 0:
+            save_model(saver, M, model_dir, i + 1)
+
+    # Saving final model
+    if saver:
+        save_model(saver, M, model_dir, i + 1)
 
     print(colored("Training ended.", "blue"))

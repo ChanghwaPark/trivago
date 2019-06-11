@@ -3,17 +3,15 @@ from pprint import pprint
 
 import tensorflow as tf
 
-from model_1a import model
-from train_1a import train
+from model_2 import model
+from train_2 import train
 
 # Define flag arguments
 flags = tf.app.flags
 
 flags.DEFINE_float('lr', 1e-3, 'Learning rate')
-flags.DEFINE_float('lrD', 0.95, 'Learning rate decay')
 flags.DEFINE_integer('bs', 32, 'Batch size')
 flags.DEFINE_integer('d', 512, 'Latent vector size')
-flags.DEFINE_string('lf', 'bpr', 'Loss function')
 flags.DEFINE_integer('epoch', 80, 'Number of epochs')
 flags.DEFINE_string('logdir', 'results/logs', 'Log directory')
 flags.DEFINE_string('ckptdir', 'results/checkpoints', 'Checkpoint directory')
@@ -31,7 +29,7 @@ def main(_):
 
     pprint(FLAGS.flag_values_dict())
 
-    model_name = '1a_'+FLAGS.lf
+    model_name = '2_'+str(FLAGS.d)+'_'+str(FLAGS.lr)
     print(f"Model name: {model_name}")
 
     # Make main model and initialize
